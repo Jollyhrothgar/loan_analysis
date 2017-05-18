@@ -1,4 +1,4 @@
-import _loan_types
+from loan_types import *
 class LoanSolver(object):
     ''' Loans are added and stored as dictionaries in self.loans list. 
     Current and initial loan state is tracked.'''
