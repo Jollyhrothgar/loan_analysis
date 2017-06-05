@@ -105,10 +105,30 @@ def pay_avalanche(payment, time_unit='month', loans=loans):
                 done = True
                 print("\tTotal Paid {}, Principal {}, Total Interest {}, in {} {}s".format(solver.get_total_paid(), solver.get_initial_balance(), solver.get_interest_paid(), time, time_unit))
 
+def pay_highest_potential_interest(payment, time_unit='month', loans=loans):
+    print("Calculating 'highest potential interest' method")
+    solver = LoanManager()
+    for loan in loans:
+        solver.add_loan(**loan)
+    time = 0
+    done = False
+    while not done:
+        solver.add_interest(1, time_unit)
+        time += 1
+        loans = [(loan_name, loan.principal*loan.rate) for loan_name,loan in solver.loans.items()]
+        loans = sorted(loans, key=lambda x:x[1], reverse=True)
+        loan_name = loans[0][0]
+
+        solver.pay_loan(loan_name, payment, excess_rule='largest_interest_rate')
+
+        if solver.debt_free():
+            done = True
+            print("\tTotal Paid {}, Principal {}, Total Interest {}, in {} {}s".format(solver.get_total_paid(), solver.get_initial_balance(), solver.get_interest_paid(), time, time_unit))
 
 if __name__ == '__main__':
-    payment = 1500
+    payment = 3000
     always_pay_highest_balance(payment)
     always_pay_highest_interest(payment)
     pay_snowball(payment)
     pay_avalanche(payment)
+    pay_highest_potential_interest(payment)
