@@ -1,4 +1,3 @@
-# TODO abstract with factory once many loan types are needed
 class StudentLoan(object):
     def __init__(self, name, rate, ltype, interest, principal):
         self.name = name
@@ -12,4 +11,3 @@ class StudentLoan(object):
     
     def copy(self):
         return StudentLoan(self.name, self.rate, self.ltype, self.interest, self.principal)
-     

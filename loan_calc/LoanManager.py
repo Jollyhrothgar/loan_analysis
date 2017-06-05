@@ -1,13 +1,16 @@
-from loan_types import *
-class LoanSolver(object):
+import numpy as np
+from .loan_types import StudentLoan
+class LoanManager(object):
     ''' Loans are added and stored as dictionaries in self.loans list. 
     Current and initial loan state is tracked.'''
     
     def __init__(self):
         self.loans = {}
         # Stores all loans which have been paid off at their initial state.
-        self.paid_loans = {}
+        self.initial_loan = {}
         self.total_paid = 0
+        self.interest_paid = 0
+        self.principal_paid = 0
         
         # Convert time into years by supplying the appropriate unit
         self._allowed_time_units = {
@@ -25,7 +28,6 @@ class LoanSolver(object):
         self._loan_types = {
             'StudentLoan':StudentLoan
         }
-        
         
     def add_loan(self, loan_name, loan_type, interest_rate, principal_balance, interest_balance=0.):
         '''Adds a loan to the loan set. Interest rate is assumed to be APR 
@@ -45,7 +47,8 @@ class LoanSolver(object):
         '''
         # generate new instance of StudentLoan (add more loan types as needed)
         if loan_type not in self._loan_types:
-            raise ValueError('Loan type {} is not yet supported. Available types are {}'.format(loan_type, repr(self._loan_types.keys())))
+            raise ValueError('Loan type {} is not yet supported. Available types are {}'.format(
+                loan_type, repr(self._loan_types.keys())))
         if loan_name in self.loans:
             raise ValueError('Loan with name {} already exists'.format(loan_name))
         loan = self._loan_types[loan_type](
@@ -56,17 +59,17 @@ class LoanSolver(object):
             interest=interest_balance,
         )
         self.loans[loan_name]=loan
-        self.paid_loans[loan_name] = loan.copy()
+        self.initial_loan[loan_name] = loan.copy()
     
-    def get_initial_principal(self):
+    def get_initial_balance(self):
         ''' gets the initial principal'''
-        return sum([l.principal for l in self.paid_loans.values()])
+        return sum([l.principal for l in self.initial_loan.values()])
     
     def get_initial_interest(self):
-        return sum([l.interest for l in self.paid_loans.values()])
+        return sum([l.interest for l in self.initial_loan.values()])
     
     def get_initial_debt(self):
-        return self.get_initial_principal() + self.get_initial_interest()
+        return self.get_initial_balance() + self.get_initial_interest()
     
     def recapitalize(self, loan_type=None, loan_name=None):
         '''Recapitalizes the interest in all loans in self.loans. If 
@@ -114,50 +117,56 @@ class LoanSolver(object):
         else:
             return False
         
-    # TODO handle remainder better - this must be done outside the class to maintain flexibility
-    def pay_loan(self, loan_name, payment, excess='largest_interest'):
-        ''' pay amount to loan_name. Payment applies first to interest, and then to principal
-        Returns either 0 or unspent money'''
-        excess_name = {
+    def pay_loan(self, loan_name, payment, excess_rule='null'):
+        '''payment is applied to loan which matches loan_name.  If loan_name is
+        paid off, then the rule matching excess_rule returns the next loan to
+        apply the payment to. Returns unpaid money '''
+        next_loan_name = {
             'largest_interest':self.largest_interest_rate,
             'lowest_interest':self.smallest_interest_rate,
-            'largest_principal':self.largest_principal,
-            'lowest_principal':self.smallest_principal,
+            'largest_balance':self.largest_balance,
+            'lowest_principal':self.smallest_balance,
         }
         
-        if loan_name not in self.loans:
-            return payment
-    
-        if excess not in excess_name: 
-            raise ValueError("You can apply excees payment to {} but you specified {}".format(repr(excess_name.keys()), excess))
-        
-        # if all debts are paid, then we can't apply a payment anywhere.
-        if self.debt_free():
-            return payment
+        payment_loop = 0
         self.total_paid += payment
-        if payment <= self.loans[loan_name].interest:
-            self.loans[loan_name].interest = self.loans[loan_name].interest - payment
-            return 0.
-        else:
-            payment = payment - self.loans[loan_name].interest
-            self.loans[loan_name].interest = 0.
-            # apply remaining payment to principal
-        if payment < self.loans[loan_name].principal:
-            self.loans[loan_name].principal = self.loans[loan_name].principal - payment
-            return 0 
-        elif payment >= self.loans[loan_name].principal:
-            payment -= self.loans[loan_name].principal
-            self.loans[loan_name].principal = 0.
-            del self.loans[loan_name]
-            self.total_paid - payment # overcounted.
+        while True:
+            # print("payment loop {}".format(payment_loop))
+            payment_loop += 1
             
-            # Since most people will just use all the payment.
-            loan_name = excess_name[excess]()
-            if loan_name is None:
-                return payment
-            if self.debt_free():
-                return payment
-            return self.pay_loan(loan_name, payment, excess)
+            if loan_name not in self.loans:
+                if excess_rule not in next_loan_name:
+                    self.total_paid -= payment
+                    return payment
+                if not self.loans:
+                    # All loans are paid off
+                    # print("ALL LOANS ARE PAID!")
+                    self.total_paid -= payment
+                    return payment
+                loan_name = next_loan_name[excess_rule]()
+            
+            if self.loans[loan_name].interest >= payment:
+                self.interest_paid += payment
+                self.loans[loan_name].interest -= payment
+                return 0
+            
+            remainder = payment - self.loans[loan_name].interest
+            self.interest_paid += self.loans[loan_name].interest
+            self.loans[loan_name].interest = 0
+            payment = remainder
+            
+            if self.loans[loan_name].principal >= payment:
+                self.principal_paid += payment
+                self.loans[loan_name].principal -= payment
+                return 0
+            
+            self.principal_paid += self.loans[loan_name].principal
+            remainder = payment - self.loans[loan_name].principal
+            # The loan has been repaid, so we remove it.
+            del self.loans[loan_name]
+            payment = remainder
+        self.total_paid -= payment
+        return payment
         
     def print_loan_state(self):
         for loan in self.loans.values():
@@ -195,14 +204,29 @@ class LoanSolver(object):
         except:
             return None
     
-    def largest_principal(self):
+    def largest_balance(self):
         try:
             return sorted(self.loans.items(), key=lambda x:x[1].principal)[-1][1].name
         except:
             return None
     
-    def smallest_principal(self):
+    def smallest_balance(self):
         try:
             return sorted(self.loans.items(), key=lambda x:x[1].principal)[0][1].name
         except:
             return None
+    
+    def get_interest_paid(self):
+        return self.interest_paid
+        
+    def get_principal_paid(self):
+        return self.principal_paid
+        
+    def get_total_paid(self):
+        return self.total_paid
+    
+    def check_payments(self):
+        pct_diff = (self.total_paid - (self.principal_paid + self.interest_paid) )/ self.total_paid
+        if pct_diff > 0.01:
+            raise ValueError("Total payments must be the sum of interest and principal paid. Total {}, Interest {}, principal {}, diff {}".format(self.total_paid, self.interest_paid, self.principal_paid, pct_diff))
+
