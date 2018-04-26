@@ -1,24 +1,28 @@
 from loan_calc import LoanManager
 loans = [
     {
+        # Minimum Payment
         'loan_name':'loan_641',
         'loan_type':'StudentLoan',
         'principal_balance':6507.64,
         'interest_rate':0.0641
     },
     {
+        # Minimum Payment
         'loan_name':'loan_541',
         'loan_type':'StudentLoan',
         'principal_balance':21263.06,
         'interest_rate':0.0541,
     },
     {
+        # Minimum Payment
         'loan_name':'loan_790',
         'loan_type':'StudentLoan',
         'principal_balance':6994.65,
         'interest_rate':0.068,
     },
     {
+        # Minimum Payment
         'loan_name':'loan_680',
         'loan_type':'StudentLoan',
         'principal_balance':23562.73,
@@ -44,7 +48,7 @@ def always_pay_highest_balance(payment, time_unit='month', loans=loans):
             solver.check_payments()
         if solver.debt_free():
             done = True
-            print("\tTotal Paid {}, Principal {}, Total Interest {}, in {} {}s".format(solver.get_total_paid(), solver.get_initial_balance(), solver.get_interest_paid(), time, time_unit))
+            print("\tTotal Paid {}, Principal {}, Total Interest {}, in {} {}s, {} {}s".format(solver.get_total_paid(), solver.get_initial_balance(), solver.get_interest_paid(), time, time_unit, time/12., "year"))
 
 def always_pay_highest_interest(payment, time_unit='month', loans=loans):
     # Pay According to Interest Amount
@@ -62,7 +66,7 @@ def always_pay_highest_interest(payment, time_unit='month', loans=loans):
             solver.pay_loan(loan_name, payment*distribution[loan_name], excess_rule='largest_interest_rate')
         if solver.debt_free():
             done = True
-            print("\tTotal Paid {}, Principal {}, Total Interest {}, in {} {}s".format(solver.get_total_paid(), solver.get_initial_balance(), solver.get_interest_paid(), time, time_unit))
+            print("\tTotal Paid {}, Principal {}, Total Interest {}, in {} {}s, {} {}s".format(solver.get_total_paid(), solver.get_initial_balance(), solver.get_interest_paid(), time, time_unit, time/12., "year"))
 
 def pay_snowball(payment, time_unit='month', loans=loans):
     # Snowball
@@ -82,7 +86,7 @@ def pay_snowball(payment, time_unit='month', loans=loans):
             loan_name = solver.smallest_balance()
             if loan_name is None:
                 done = True
-                print("\tTotal Paid {}, Principal {}, Total Interest {}, in {} {}s".format(solver.get_total_paid(), solver.get_initial_balance(), solver.get_interest_paid(), time, time_unit))
+                print("\tTotal Paid {}, Principal {}, Total Interest {}, in {} {}s, {} {}s".format(solver.get_total_paid(), solver.get_initial_balance(), solver.get_interest_paid(), time, time_unit, time/12., "year"))
         
 def pay_avalanche(payment, time_unit='month', loans=loans):
     # Avalanche
@@ -103,7 +107,7 @@ def pay_avalanche(payment, time_unit='month', loans=loans):
             loan_name = solver.largest_balance()
             if loan_name is None:
                 done = True
-                print("\tTotal Paid {}, Principal {}, Total Interest {}, in {} {}s".format(solver.get_total_paid(), solver.get_initial_balance(), solver.get_interest_paid(), time, time_unit))
+                print("\tTotal Paid {}, Principal {}, Total Interest {}, in {} {}s, {} {}s".format(solver.get_total_paid(), solver.get_initial_balance(), solver.get_interest_paid(), time, time_unit, time/12., "year"))
 
 def pay_highest_potential_interest(payment, time_unit='month', loans=loans):
     print("Calculating 'highest potential interest' method")
@@ -123,10 +127,10 @@ def pay_highest_potential_interest(payment, time_unit='month', loans=loans):
 
         if solver.debt_free():
             done = True
-            print("\tTotal Paid {}, Principal {}, Total Interest {}, in {} {}s".format(solver.get_total_paid(), solver.get_initial_balance(), solver.get_interest_paid(), time, time_unit))
+            print("\tTotal Paid {}, Principal {}, Total Interest {}, in {} {}s, {} {}s".format(solver.get_total_paid(), solver.get_initial_balance(), solver.get_interest_paid(), time, time_unit, time/12., "year"))
 
 if __name__ == '__main__':
-    payment = 3000
+    payment = 2000
     always_pay_highest_balance(payment)
     always_pay_highest_interest(payment)
     pay_snowball(payment)
